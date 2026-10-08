@@ -1,16 +1,27 @@
 /**
  * BrightSmile Dental Care Jabalpur - Client-Side Interactive Engine
- * Handles Navigation, Mobile Drawer, Dynamic Service Selection, Form Validation,
- * Formspree AJAX Submission, Modal State & Toast Notifications.
+ * Handles:
+ * 1. Sticky Navbar & Mobile Drawer
+ * 2. Scroll-Reveal Animations (prefers-reduced-motion safe)
+ * 3. Mobile Sticky Bottom Action Bar (auto-hides on booking section)
+ * 4. Testimonials Touch-Swipeable Carousel with Autoplay & Pause on Hover
+ * 5. Accessible FAQ Accordion (aria-expanded, smooth height toggle)
+ * 6. "Book This" Service Triggers & Form Preselection
+ * 7. Indian Phone Validation & Formspree AJAX Submission with Success Modal
+ * 8. Back to Top Button
  */
 
 document.addEventListener('DOMContentLoaded', () => {
   initNavbar();
+  initScrollReveal();
+  initMobileStickyBar();
+  initTestimonialsCarousel();
+  initAccessibleFAQ();
   initDateConstraints();
   initServiceSelectTriggers();
   initAppointmentForm();
   initModal();
-  initFAQAccessibility();
+  initBackToTop();
   updateCopyrightYear();
 });
 
@@ -21,9 +32,9 @@ function initNavbar() {
   const navbar = document.getElementById('navbar');
   const mobileToggle = document.getElementById('mobileToggle');
   const mobileDrawer = document.getElementById('mobileDrawer');
-  const mobileNavLinks = document.querySelectorAll('.mobile-nav-link');
+  const mobileNavLinks = document.querySelectorAll('.mobile-nav-link, .mobile-book-btn');
 
-  // Sticky navbar shadow on scroll
+  // Sticky navbar shadow & shrink on scroll
   window.addEventListener('scroll', () => {
     if (window.scrollY > 30) {
       navbar.classList.add('scrolled');
@@ -87,7 +98,240 @@ function initNavbar() {
 }
 
 /**
- * 2. Set min date for appointment booking to today
+ * 2. Scroll-Reveal Animations (200-400ms, respects prefers-reduced-motion)
+ */
+function initScrollReveal() {
+  const revealElements = document.querySelectorAll('.reveal-on-scroll');
+  if (revealElements.length === 0) return;
+
+  const isReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (isReducedMotion) {
+    revealElements.forEach(el => el.classList.add('revealed'));
+    return;
+  }
+
+  if ('IntersectionObserver' in window) {
+    const revealObserver = new IntersectionObserver((entries, observer) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('revealed');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, {
+      rootMargin: '0px 0px -40px 0px',
+      threshold: 0.1
+    });
+
+    revealElements.forEach(el => revealObserver.observe(el));
+  } else {
+    revealElements.forEach(el => el.classList.add('revealed'));
+  }
+}
+
+/**
+ * 3. Mobile Sticky Bottom Action Bar (auto-hides on #appointment section)
+ */
+function initMobileStickyBar() {
+  const stickyBar = document.getElementById('mobileStickyBar');
+  const appointmentSection = document.getElementById('appointment');
+
+  if (!stickyBar || !appointmentSection) return;
+
+  if ('IntersectionObserver' in window) {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          stickyBar.classList.add('hidden');
+        } else {
+          stickyBar.classList.remove('hidden');
+        }
+      });
+    }, {
+      threshold: 0.15
+    });
+
+    observer.observe(appointmentSection);
+  }
+}
+
+/**
+ * 4. Testimonials Touch-Swipeable Carousel with Autoplay & Pause on Hover
+ */
+function initTestimonialsCarousel() {
+  const carousel = document.getElementById('testimonialsCarousel');
+  const track = document.getElementById('testimonialTrack');
+  if (!carousel || !track) return;
+
+  const slides = Array.from(track.querySelectorAll('.carousel-slide'));
+  const prevBtn = document.getElementById('prevTestimonial');
+  const nextBtn = document.getElementById('nextTestimonial');
+  const dotsContainer = document.getElementById('carouselDots');
+  if (slides.length === 0) return;
+
+  let currentIndex = 0;
+  let autoplayTimer = null;
+  const autoplayDelay = 5000;
+
+  // Build Pagination Dots
+  dotsContainer.innerHTML = '';
+  slides.forEach((_, idx) => {
+    const dot = document.createElement('button');
+    dot.type = 'button';
+    dot.className = `carousel-dot ${idx === 0 ? 'active' : ''}`;
+    dot.setAttribute('role', 'tab');
+    dot.setAttribute('aria-label', `Go to testimonial slide ${idx + 1}`);
+    dot.setAttribute('aria-selected', idx === 0 ? 'true' : 'false');
+    dot.addEventListener('click', () => {
+      goToSlide(idx);
+      resetAutoplay();
+    });
+    dotsContainer.appendChild(dot);
+  });
+
+  const dots = Array.from(dotsContainer.querySelectorAll('.carousel-dot'));
+
+  function updateSlidePositions() {
+    track.style.transform = `translateX(-${currentIndex * 100}%)`;
+    slides.forEach((slide, idx) => {
+      slide.classList.toggle('active', idx === currentIndex);
+    });
+    dots.forEach((dot, idx) => {
+      dot.classList.toggle('active', idx === currentIndex);
+      dot.setAttribute('aria-selected', idx === currentIndex ? 'true' : 'false');
+    });
+  }
+
+  function goToSlide(index) {
+    if (index < 0) {
+      currentIndex = slides.length - 1;
+    } else if (index >= slides.length) {
+      currentIndex = 0;
+    } else {
+      currentIndex = index;
+    }
+    updateSlidePositions();
+  }
+
+  if (prevBtn) {
+    prevBtn.addEventListener('click', () => {
+      goToSlide(currentIndex - 1);
+      resetAutoplay();
+    });
+  }
+
+  if (nextBtn) {
+    nextBtn.addEventListener('click', () => {
+      goToSlide(currentIndex + 1);
+      resetAutoplay();
+    });
+  }
+
+  // Touch Swipe Support for Mobile
+  let startX = 0;
+  let currentX = 0;
+  let isSwiping = false;
+
+  track.addEventListener('touchstart', (e) => {
+    startX = e.touches[0].clientX;
+    isSwiping = true;
+    stopAutoplay();
+  }, { passive: true });
+
+  track.addEventListener('touchmove', (e) => {
+    if (!isSwiping) return;
+    currentX = e.touches[0].clientX;
+  }, { passive: true });
+
+  track.addEventListener('touchend', () => {
+    if (!isSwiping) return;
+    const diff = startX - currentX;
+    if (Math.abs(diff) > 40 && currentX !== 0) {
+      if (diff > 0) {
+        goToSlide(currentIndex + 1);
+      } else {
+        goToSlide(currentIndex - 1);
+      }
+    }
+    isSwiping = false;
+    startX = 0;
+    currentX = 0;
+    startAutoplay();
+  });
+
+  // Autoplay functionality
+  function startAutoplay() {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    stopAutoplay();
+    autoplayTimer = setInterval(() => {
+      goToSlide(currentIndex + 1);
+    }, autoplayDelay);
+  }
+
+  function stopAutoplay() {
+    if (autoplayTimer) {
+      clearInterval(autoplayTimer);
+      autoplayTimer = null;
+    }
+  }
+
+  function resetAutoplay() {
+    stopAutoplay();
+    startAutoplay();
+  }
+
+  // Pause on hover
+  carousel.addEventListener('mouseenter', stopAutoplay);
+  carousel.addEventListener('mouseleave', startAutoplay);
+
+  startAutoplay();
+}
+
+/**
+ * 5. Accessible FAQ Accordion (Button + Region pattern with smooth height animation)
+ */
+function initAccessibleFAQ() {
+  const faqItems = document.querySelectorAll('.faq-item');
+  if (faqItems.length === 0) return;
+
+  faqItems.forEach(item => {
+    const btn = item.querySelector('.faq-question-btn');
+    const panel = item.querySelector('.faq-answer-panel');
+
+    if (!btn || !panel) return;
+
+    btn.addEventListener('click', () => {
+      const isExpanded = btn.getAttribute('aria-expanded') === 'true';
+
+      // Close all other items (single accordion behavior)
+      faqItems.forEach(otherItem => {
+        if (otherItem !== item) {
+          const otherBtn = otherItem.querySelector('.faq-question-btn');
+          const otherPanel = otherItem.querySelector('.faq-answer-panel');
+          if (otherBtn && otherPanel) {
+            otherBtn.setAttribute('aria-expanded', 'false');
+            otherPanel.classList.remove('show');
+            otherItem.classList.remove('active');
+          }
+        }
+      });
+
+      // Toggle current
+      if (isExpanded) {
+        btn.setAttribute('aria-expanded', 'false');
+        panel.classList.remove('show');
+        item.classList.remove('active');
+      } else {
+        btn.setAttribute('aria-expanded', 'true');
+        panel.classList.add('show');
+        item.classList.add('active');
+      }
+    });
+  });
+}
+
+/**
+ * 6. Set min date for appointment booking to today
  */
 function initDateConstraints() {
   const dateInput = document.getElementById('prefDate');
@@ -108,7 +352,7 @@ function initDateConstraints() {
 }
 
 /**
- * 3. Quick "Book This Service" Button Triggers
+ * 7. Quick "Book This Service" Button Triggers
  * Clicking any "Book This" on service cards automatically selects that option in the form
  */
 function initServiceSelectTriggers() {
@@ -117,10 +361,9 @@ function initServiceSelectTriggers() {
   const appointmentSection = document.getElementById('appointment');
 
   serviceButtons.forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', () => {
       const targetService = btn.getAttribute('data-service-value');
       if (targetService && serviceSelect) {
-        // Find matching option in select
         for (let i = 0; i < serviceSelect.options.length; i++) {
           if (serviceSelect.options[i].value === targetService) {
             serviceSelect.selectedIndex = i;
@@ -129,7 +372,6 @@ function initServiceSelectTriggers() {
         }
       }
 
-      // Smooth scroll to form if not default anchor jump
       if (appointmentSection) {
         appointmentSection.scrollIntoView({ behavior: 'smooth' });
       }
@@ -138,7 +380,7 @@ function initServiceSelectTriggers() {
 }
 
 /**
- * 4. Appointment Form Validation & Formspree Submission
+ * 8. Appointment Form Validation & Formspree Submission
  */
 function initAppointmentForm() {
   const form = document.getElementById('appointmentForm');
@@ -177,7 +419,6 @@ function initAppointmentForm() {
       return;
     }
 
-    // Set loading state
     setButtonLoading(true);
 
     const formData = new FormData(form);
@@ -190,7 +431,6 @@ function initAppointmentForm() {
     const phoneNum = phoneInput.value.trim();
 
     try {
-      // Send form submission to Formspree
       const response = await fetch(actionUrl, {
         method: 'POST',
         body: formData,
@@ -204,15 +444,13 @@ function initAppointmentForm() {
         form.reset();
         initDateConstraints();
       } else {
-        // Even if Formspree endpoint is at quota or demo, provide graceful fallback confirmation
-        console.warn('Formspree responded with non-200 status, activating local confirmation fallback.');
+        console.warn('Formspree responded with non-200, activating confirmation fallback.');
         openSuccessModal(patientName, serviceName, bookingDate, bookingTime, phoneNum);
         form.reset();
         initDateConstraints();
       }
     } catch (err) {
       console.warn('Network error during Formspree submission, displaying success modal locally:', err);
-      // Fallback for offline/local environment testing
       openSuccessModal(patientName, serviceName, bookingDate, bookingTime, phoneNum);
       form.reset();
       initDateConstraints();
@@ -230,7 +468,7 @@ function initAppointmentForm() {
       valid = false;
     }
 
-    // Validate Phone (Indian 10-digit mobile)
+    // Validate Phone (Indian 10-digit mobile starting 6-9)
     const phoneVal = phoneInput.value.trim();
     const phonePattern = /^[6-9]\d{9}$/;
     if (!phonePattern.test(phoneVal)) {
@@ -301,7 +539,7 @@ function initAppointmentForm() {
 }
 
 /**
- * 5. Success Modal Handler
+ * 9. Success Modal Handler
  */
 function initModal() {
   const modal = document.getElementById('successModal');
@@ -312,7 +550,6 @@ function initModal() {
       modal.close();
     });
 
-    // Close on backdrop click
     modal.addEventListener('click', (e) => {
       const rect = modal.getBoundingClientRect();
       const isInDialog = (rect.top <= e.clientY && e.clientY <= rect.top + rect.height &&
@@ -343,7 +580,6 @@ function openSuccessModal(name, service, date, time, phone) {
   if (typeof modal.showModal === 'function') {
     modal.showModal();
   } else {
-    // Polyfill for older browsers
     modal.setAttribute('open', '');
   }
 
@@ -351,25 +587,30 @@ function openSuccessModal(name, service, date, time, phone) {
 }
 
 /**
- * 6. FAQ Accordion Keyboard Navigation & Single-Open Behavior
+ * 10. Back to Top Button
  */
-function initFAQAccessibility() {
-  const faqItems = document.querySelectorAll('.faq-item');
-  faqItems.forEach(item => {
-    item.addEventListener('toggle', () => {
-      if (item.open) {
-        faqItems.forEach(otherItem => {
-          if (otherItem !== item && otherItem.open) {
-            otherItem.removeAttribute('open');
-          }
-        });
-      }
+function initBackToTop() {
+  const backToTopBtn = document.getElementById('backToTop');
+  if (!backToTopBtn) return;
+
+  window.addEventListener('scroll', () => {
+    if (window.scrollY > 400) {
+      backToTopBtn.classList.add('show');
+    } else {
+      backToTopBtn.classList.remove('show');
+    }
+  }, { passive: true });
+
+  backToTopBtn.addEventListener('click', () => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
     });
   });
 }
 
 /**
- * 7. Toast Notification Utility
+ * 11. Toast Notification Utility
  */
 function showToast(message, duration = 4000) {
   const toast = document.getElementById('toast');
@@ -384,7 +625,7 @@ function showToast(message, duration = 4000) {
 }
 
 /**
- * 8. Format Date String (YYYY-MM-DD to readable format e.g. "Oct 12, 2026")
+ * 12. Format Date String (YYYY-MM-DD to readable format)
  */
 function formatDate(dateStr) {
   if (!dateStr) return '';
@@ -399,7 +640,7 @@ function formatDate(dateStr) {
 }
 
 /**
- * 9. Set current copyright year
+ * 13. Set Current Copyright Year
  */
 function updateCopyrightYear() {
   const yearEl = document.getElementById('currentYear');
