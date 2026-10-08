@@ -1,40 +1,45 @@
 /**
- * BrightSmile Dental Care Jabalpur - Client-Side Interactive Engine
+ * BrightSmile Dental Care Jabalpur - Editorial Minimal Interactive Engine
  * Handles:
- * 1. Sticky Navbar & Mobile Drawer
- * 2. Scroll-Reveal Animations (prefers-reduced-motion safe)
- * 3. Mobile Sticky Bottom Action Bar (auto-hides on booking section)
- * 4. Testimonials Touch-Swipeable Carousel with Autoplay & Pause on Hover
- * 5. Accessible FAQ Accordion (aria-expanded, smooth height toggle)
- * 6. "Book This" Service Triggers & Form Preselection
- * 7. Indian Phone Validation & Formspree AJAX Submission with Success Modal
- * 8. Back to Top Button
+ * 1. Fullscreen Navy Overlay Menu (Accessible Focus Trap & Esc Listener)
+ * 2. Sticky Navbar Blur & Shrink on Scroll
+ * 3. Animated Count-Up Numbers (About Section)
+ * 4. Interactive Before/After Comparison Drag Slider & Filter Tabs
+ * 5. Horizontal Scroll-Snap Reviews Carousel Controls
+ * 6. Accessible FAQ Accordion (Aria-expanded, Single-Open)
+ * 7. Treatment & Pricing "Book" Triggers with Form Pre-selection
+ * 8. Appointment Form Validation, Formspree AJAX Submission & Modal
+ * 9. Mobile Sticky Action Bar Auto-Hide & Back to Top Button
  */
 
 document.addEventListener('DOMContentLoaded', () => {
-  initNavbar();
+  initNavbarAndOverlay();
   initScrollReveal();
-  initMobileStickyBar();
-  initTestimonialsCarousel();
+  initStatsCountUp();
+  initBeforeAfterSlider();
+  initReviewsScroll();
   initAccessibleFAQ();
   initDateConstraints();
-  initServiceSelectTriggers();
+  initTreatmentSelectTriggers();
   initAppointmentForm();
   initModal();
   initBackToTop();
+  initMobileStickyBar();
   updateCopyrightYear();
 });
 
 /**
- * 1. Navbar Sticky Effect & Mobile Drawer Navigation
+ * 1. Fullscreen Navy Overlay Menu & Sticky Navbar
  */
-function initNavbar() {
+function initNavbarAndOverlay() {
   const navbar = document.getElementById('navbar');
-  const mobileToggle = document.getElementById('mobileToggle');
-  const mobileDrawer = document.getElementById('mobileDrawer');
-  const mobileNavLinks = document.querySelectorAll('.mobile-nav-link, .mobile-book-btn');
+  const openMenuBtn = document.getElementById('openMenuBtn');
+  const closeMenuBtn = document.getElementById('closeMenuBtn');
+  const overlay = document.getElementById('fullscreenOverlay');
+  const overlayLinks = overlay.querySelectorAll('.overlay-link, .overlay-book-btn');
+  const mainContent = document.getElementById('mainContent');
 
-  // Sticky navbar shadow & shrink on scroll
+  // Sticky navbar shadow on scroll
   window.addEventListener('scroll', () => {
     if (window.scrollY > 30) {
       navbar.classList.add('scrolled');
@@ -43,79 +48,66 @@ function initNavbar() {
     }
   }, { passive: true });
 
-  // Mobile drawer toggle
-  if (mobileToggle && mobileDrawer) {
-    mobileToggle.addEventListener('click', () => {
-      const isOpen = mobileDrawer.classList.toggle('open');
-      mobileToggle.setAttribute('aria-expanded', String(isOpen));
-    });
-
-    // Close drawer when clicking any nav link
-    mobileNavLinks.forEach(link => {
-      link.addEventListener('click', () => {
-        mobileDrawer.classList.remove('open');
-        mobileToggle.setAttribute('aria-expanded', 'false');
-      });
-    });
-
-    // Close drawer when clicking outside
-    document.addEventListener('click', (e) => {
-      if (!navbar.contains(e.target) && mobileDrawer.classList.contains('open')) {
-        mobileDrawer.classList.remove('open');
-        mobileToggle.setAttribute('aria-expanded', 'false');
-      }
-    });
+  function openMenu() {
+    overlay.classList.add('open');
+    overlay.setAttribute('aria-hidden', 'false');
+    openMenuBtn.setAttribute('aria-expanded', 'true');
+    document.body.style.overflow = 'hidden';
+    if (mainContent) mainContent.setAttribute('inert', '');
+    closeMenuBtn.focus();
   }
 
-  // Active navigation link tracking via IntersectionObserver
-  const sections = document.querySelectorAll('main section[id]');
-  const navLinks = document.querySelectorAll('.nav-link');
-
-  if ('IntersectionObserver' in window && sections.length > 0) {
-    const observerOptions = {
-      root: null,
-      rootMargin: '-20% 0px -60% 0px',
-      threshold: 0
-    };
-
-    const sectionObserver = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          const id = entry.target.getAttribute('id');
-          navLinks.forEach(link => {
-            if (link.getAttribute('href') === `#${id}`) {
-              link.classList.add('active');
-            } else {
-              link.classList.remove('active');
-            }
-          });
-        }
-      });
-    }, observerOptions);
-
-    sections.forEach(section => sectionObserver.observe(section));
+  function closeMenu() {
+    overlay.classList.remove('open');
+    overlay.setAttribute('aria-hidden', 'true');
+    openMenuBtn.setAttribute('aria-expanded', 'false');
+    document.body.style.overflow = '';
+    if (mainContent) mainContent.removeAttribute('inert');
+    openMenuBtn.focus();
   }
+
+  if (openMenuBtn && overlay) {
+    openMenuBtn.addEventListener('click', openMenu);
+  }
+
+  if (closeMenuBtn && overlay) {
+    closeMenuBtn.addEventListener('click', closeMenu);
+  }
+
+  // Close on Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && overlay.classList.contains('open')) {
+      closeMenu();
+    }
+  });
+
+  // Close on clicking any overlay link
+  overlayLinks.forEach(link => {
+    link.addEventListener('click', () => {
+      closeMenu();
+    });
+  });
 }
 
 /**
- * 2. Scroll-Reveal Animations (200-400ms, respects prefers-reduced-motion)
+ * 2. Subtle Scroll-Reveal Animations (Respects prefers-reduced-motion)
  */
 function initScrollReveal() {
-  const revealElements = document.querySelectorAll('.reveal-on-scroll');
-  if (revealElements.length === 0) return;
+  const elements = document.querySelectorAll('.reveal-on-scroll');
+  if (elements.length === 0) return;
 
   const isReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (isReducedMotion) {
-    revealElements.forEach(el => el.classList.add('revealed'));
+    elements.forEach(el => el.classList.add('revealed'));
     return;
   }
 
   if ('IntersectionObserver' in window) {
-    const revealObserver = new IntersectionObserver((entries, observer) => {
+    const observer = new IntersectionObserver((entries, obs) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
           entry.target.classList.add('revealed');
-          observer.unobserve(entry.target);
+          obs.unobserve(entry.target);
         }
       });
     }, {
@@ -123,172 +115,205 @@ function initScrollReveal() {
       threshold: 0.1
     });
 
-    revealElements.forEach(el => revealObserver.observe(el));
+    elements.forEach(el => observer.observe(el));
   } else {
-    revealElements.forEach(el => el.classList.add('revealed'));
+    elements.forEach(el => el.classList.add('revealed'));
   }
 }
 
 /**
- * 3. Mobile Sticky Bottom Action Bar (auto-hides on #appointment section)
+ * 3. Animated Count-Up Numbers in About Section
  */
-function initMobileStickyBar() {
-  const stickyBar = document.getElementById('mobileStickyBar');
-  const appointmentSection = document.getElementById('appointment');
+function initStatsCountUp() {
+  const statsGrid = document.getElementById('statsGrid');
+  if (!statsGrid) return;
 
-  if (!stickyBar || !appointmentSection) return;
+  let hasAnimated = false;
 
-  if ('IntersectionObserver' in window) {
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          stickyBar.classList.add('hidden');
-        } else {
-          stickyBar.classList.remove('hidden');
-        }
-      });
-    }, {
-      threshold: 0.15
-    });
-
-    observer.observe(appointmentSection);
-  }
-}
-
-/**
- * 4. Testimonials Touch-Swipeable Carousel with Autoplay & Pause on Hover
- */
-function initTestimonialsCarousel() {
-  const carousel = document.getElementById('testimonialsCarousel');
-  const track = document.getElementById('testimonialTrack');
-  if (!carousel || !track) return;
-
-  const slides = Array.from(track.querySelectorAll('.carousel-slide'));
-  const prevBtn = document.getElementById('prevTestimonial');
-  const nextBtn = document.getElementById('nextTestimonial');
-  const dotsContainer = document.getElementById('carouselDots');
-  if (slides.length === 0) return;
-
-  let currentIndex = 0;
-  let autoplayTimer = null;
-  const autoplayDelay = 5000;
-
-  // Build Pagination Dots
-  dotsContainer.innerHTML = '';
-  slides.forEach((_, idx) => {
-    const dot = document.createElement('button');
-    dot.type = 'button';
-    dot.className = `carousel-dot ${idx === 0 ? 'active' : ''}`;
-    dot.setAttribute('role', 'tab');
-    dot.setAttribute('aria-label', `Go to testimonial slide ${idx + 1}`);
-    dot.setAttribute('aria-selected', idx === 0 ? 'true' : 'false');
-    dot.addEventListener('click', () => {
-      goToSlide(idx);
-      resetAutoplay();
-    });
-    dotsContainer.appendChild(dot);
-  });
-
-  const dots = Array.from(dotsContainer.querySelectorAll('.carousel-dot'));
-
-  function updateSlidePositions() {
-    track.style.transform = `translateX(-${currentIndex * 100}%)`;
-    slides.forEach((slide, idx) => {
-      slide.classList.toggle('active', idx === currentIndex);
-    });
-    dots.forEach((dot, idx) => {
-      dot.classList.toggle('active', idx === currentIndex);
-      dot.setAttribute('aria-selected', idx === currentIndex ? 'true' : 'false');
-    });
-  }
-
-  function goToSlide(index) {
-    if (index < 0) {
-      currentIndex = slides.length - 1;
-    } else if (index >= slides.length) {
-      currentIndex = 0;
-    } else {
-      currentIndex = index;
-    }
-    updateSlidePositions();
-  }
-
-  if (prevBtn) {
-    prevBtn.addEventListener('click', () => {
-      goToSlide(currentIndex - 1);
-      resetAutoplay();
-    });
-  }
-
-  if (nextBtn) {
-    nextBtn.addEventListener('click', () => {
-      goToSlide(currentIndex + 1);
-      resetAutoplay();
-    });
-  }
-
-  // Touch Swipe Support for Mobile
-  let startX = 0;
-  let currentX = 0;
-  let isSwiping = false;
-
-  track.addEventListener('touchstart', (e) => {
-    startX = e.touches[0].clientX;
-    isSwiping = true;
-    stopAutoplay();
-  }, { passive: true });
-
-  track.addEventListener('touchmove', (e) => {
-    if (!isSwiping) return;
-    currentX = e.touches[0].clientX;
-  }, { passive: true });
-
-  track.addEventListener('touchend', () => {
-    if (!isSwiping) return;
-    const diff = startX - currentX;
-    if (Math.abs(diff) > 40 && currentX !== 0) {
-      if (diff > 0) {
-        goToSlide(currentIndex + 1);
-      } else {
-        goToSlide(currentIndex - 1);
+  const countUpObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting && !hasAnimated) {
+        hasAnimated = true;
+        animateNumbers();
+        countUpObserver.unobserve(statsGrid);
       }
-    }
-    isSwiping = false;
-    startX = 0;
-    currentX = 0;
-    startAutoplay();
-  });
+    });
+  }, { threshold: 0.3 });
 
-  // Autoplay functionality
-  function startAutoplay() {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    stopAutoplay();
-    autoplayTimer = setInterval(() => {
-      goToSlide(currentIndex + 1);
-    }, autoplayDelay);
+  countUpObserver.observe(statsGrid);
+
+  function animateNumbers() {
+    const counterElements = statsGrid.querySelectorAll('.counter-number');
+    const duration = 1600; // ms
+
+    counterElements.forEach(el => {
+      const target = parseFloat(el.getAttribute('data-target'));
+      const isDecimal = el.getAttribute('data-decimals') === '1';
+      const start = 0;
+      const startTime = performance.now();
+
+      function update(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        // Ease-out cubic
+        const easeProgress = 1 - Math.pow(1 - progress, 3);
+        const currentVal = start + (target - start) * easeProgress;
+
+        if (isDecimal) {
+          el.textContent = currentVal.toFixed(1);
+        } else {
+          el.textContent = Math.floor(currentVal).toLocaleString('en-IN');
+        }
+
+        if (progress < 1) {
+          requestAnimationFrame(update);
+        } else {
+          el.textContent = isDecimal ? target.toFixed(1) : target.toLocaleString('en-IN');
+        }
+      }
+
+      requestAnimationFrame(update);
+    });
   }
-
-  function stopAutoplay() {
-    if (autoplayTimer) {
-      clearInterval(autoplayTimer);
-      autoplayTimer = null;
-    }
-  }
-
-  function resetAutoplay() {
-    stopAutoplay();
-    startAutoplay();
-  }
-
-  // Pause on hover
-  carousel.addEventListener('mouseenter', stopAutoplay);
-  carousel.addEventListener('mouseleave', startAutoplay);
-
-  startAutoplay();
 }
 
 /**
- * 5. Accessible FAQ Accordion (Button + Region pattern with smooth height animation)
+ * 4. Interactive Before & After Comparison Drag Slider & Filter Tabs
+ */
+function initBeforeAfterSlider() {
+  const container = document.getElementById('baContainer');
+  const overlay = document.getElementById('baOverlay');
+  const handle = document.getElementById('baHandle');
+  if (!container || !overlay || !handle) return;
+
+  let isDragging = false;
+
+  function setSliderPosition(clientX) {
+    const rect = container.getBoundingClientRect();
+    let x = clientX - rect.left;
+    if (x < 0) x = 0;
+    if (x > rect.width) x = rect.width;
+    const percentage = (x / rect.width) * 100;
+
+    overlay.style.width = `${percentage}%`;
+    handle.style.left = `${percentage}%`;
+  }
+
+  // Mouse Events
+  container.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    setSliderPosition(e.clientX);
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    setSliderPosition(e.clientX);
+  });
+
+  window.addEventListener('mouseup', () => {
+    isDragging = false;
+  });
+
+  // Touch Events
+  container.addEventListener('touchstart', (e) => {
+    isDragging = true;
+    setSliderPosition(e.touches[0].clientX);
+  }, { passive: true });
+
+  window.addEventListener('touchmove', (e) => {
+    if (!isDragging) return;
+    setSliderPosition(e.touches[0].clientX);
+  }, { passive: true });
+
+  window.addEventListener('touchend', () => {
+    isDragging = false;
+  });
+
+  // Filter Tabs logic
+  const filterTabs = document.querySelectorAll('.filter-tab');
+  const cardCaption = document.querySelector('.ba-card-caption');
+
+  const casesData = {
+    all: {
+      patient: 'Case: 1-Hour Cold Laser Whitening',
+      meta: 'Completed in 45 minutes • 7 shades lighter • Enamel preserved',
+      service: 'Laser Teeth Whitening',
+      before: 'assets/images/hero_clinic.jpg',
+      after: 'assets/images/hero_smile.jpg'
+    },
+    whitening: {
+      patient: 'Case: 1-Hour Cold Laser Whitening',
+      meta: 'Completed in 45 minutes • 7 shades lighter • Enamel preserved',
+      service: 'Laser Teeth Whitening',
+      before: 'assets/images/hero_clinic.jpg',
+      after: 'assets/images/hero_smile.jpg'
+    },
+    aligners: {
+      patient: 'Case: Invisible Clear Aligners',
+      meta: '7 months active wear • Zero metal wires • Closed diastema gap',
+      service: 'Invisible Braces & Aligners',
+      before: 'assets/images/clinic_chair.jpg',
+      after: 'assets/images/aligner_macro.jpg'
+    },
+    implants: {
+      patient: 'Case: Guided Keyhole Dental Implant',
+      meta: 'Immediate loading • Zirconia crown restoration • Lifetime warranty',
+      service: 'Dental Implants',
+      before: 'assets/images/hero_clinic.jpg',
+      after: 'assets/images/hero_smile.jpg'
+    }
+  };
+
+  filterTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      filterTabs.forEach(t => {
+        t.classList.remove('active');
+        t.setAttribute('aria-selected', 'false');
+      });
+      tab.classList.add('active');
+      tab.setAttribute('aria-selected', 'true');
+
+      const filter = tab.getAttribute('data-filter');
+      const data = casesData[filter] || casesData.all;
+
+      if (cardCaption) {
+        const titleEl = cardCaption.querySelector('.case-patient');
+        const metaEl = cardCaption.querySelector('.case-meta');
+        const btnEl = cardCaption.querySelector('.treatment-select-btn');
+        if (titleEl) titleEl.textContent = data.patient;
+        if (metaEl) metaEl.textContent = data.meta;
+        if (btnEl) btnEl.setAttribute('data-service-value', data.service);
+      }
+
+      // Reset slider to center
+      overlay.style.width = '50%';
+      handle.style.left = '50%';
+    });
+  });
+}
+
+/**
+ * 5. Horizontal Scroll-Snap Reviews Carousel Controls
+ */
+function initReviewsScroll() {
+  const track = document.getElementById('reviewsTrack');
+  const prevBtn = document.getElementById('reviewsScrollPrev');
+  const nextBtn = document.getElementById('reviewsScrollNext');
+  if (!track || !prevBtn || !nextBtn) return;
+
+  const scrollAmount = 360;
+
+  prevBtn.addEventListener('click', () => {
+    track.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+  });
+
+  nextBtn.addEventListener('click', () => {
+    track.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+  });
+}
+
+/**
+ * 6. Accessible FAQ Accordion (Single-Open, Aria-expanded)
  */
 function initAccessibleFAQ() {
   const faqItems = document.querySelectorAll('.faq-item');
@@ -297,13 +322,12 @@ function initAccessibleFAQ() {
   faqItems.forEach(item => {
     const btn = item.querySelector('.faq-question-btn');
     const panel = item.querySelector('.faq-answer-panel');
-
     if (!btn || !panel) return;
 
     btn.addEventListener('click', () => {
       const isExpanded = btn.getAttribute('aria-expanded') === 'true';
 
-      // Close all other items (single accordion behavior)
+      // Close all other items
       faqItems.forEach(otherItem => {
         if (otherItem !== item) {
           const otherBtn = otherItem.querySelector('.faq-question-btn');
@@ -311,7 +335,6 @@ function initAccessibleFAQ() {
           if (otherBtn && otherPanel) {
             otherBtn.setAttribute('aria-expanded', 'false');
             otherPanel.classList.remove('show');
-            otherItem.classList.remove('active');
           }
         }
       });
@@ -320,47 +343,23 @@ function initAccessibleFAQ() {
       if (isExpanded) {
         btn.setAttribute('aria-expanded', 'false');
         panel.classList.remove('show');
-        item.classList.remove('active');
       } else {
         btn.setAttribute('aria-expanded', 'true');
         panel.classList.add('show');
-        item.classList.add('active');
       }
     });
   });
 }
 
 /**
- * 6. Set min date for appointment booking to today
+ * 7. Treatment & Pricing "Book" Triggers with Form Pre-selection
  */
-function initDateConstraints() {
-  const dateInput = document.getElementById('prefDate');
-  if (dateInput) {
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    dateInput.min = `${yyyy}-${mm}-${dd}`;
-    
-    // Set default value to tomorrow if possible
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tMm = String(tomorrow.getMonth() + 1).padStart(2, '0');
-    const tDd = String(tomorrow.getDate()).padStart(2, '0');
-    dateInput.value = `${tomorrow.getFullYear()}-${tMm}-${tDd}`;
-  }
-}
-
-/**
- * 7. Quick "Book This Service" Button Triggers
- * Clicking any "Book This" on service cards automatically selects that option in the form
- */
-function initServiceSelectTriggers() {
-  const serviceButtons = document.querySelectorAll('.select-service-btn');
+function initTreatmentSelectTriggers() {
+  const selectButtons = document.querySelectorAll('.treatment-select-btn');
   const serviceSelect = document.getElementById('service');
   const appointmentSection = document.getElementById('appointment');
 
-  serviceButtons.forEach(btn => {
+  selectButtons.forEach(btn => {
     btn.addEventListener('click', () => {
       const targetService = btn.getAttribute('data-service-value');
       if (targetService && serviceSelect) {
@@ -380,7 +379,27 @@ function initServiceSelectTriggers() {
 }
 
 /**
- * 8. Appointment Form Validation & Formspree Submission
+ * 8. Set min date for appointment booking to today
+ */
+function initDateConstraints() {
+  const dateInput = document.getElementById('prefDate');
+  if (dateInput) {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    dateInput.min = `${yyyy}-${mm}-${dd}`;
+
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tMm = String(tomorrow.getMonth() + 1).padStart(2, '0');
+    const tDd = String(tomorrow.getDate()).padStart(2, '0');
+    dateInput.value = `${tomorrow.getFullYear()}-${tMm}-${tDd}`;
+  }
+}
+
+/**
+ * 9. Appointment Form Validation & Formspree Submission
  */
 function initAppointmentForm() {
   const form = document.getElementById('appointmentForm');
@@ -394,13 +413,12 @@ function initAppointmentForm() {
   const timeSelect = document.getElementById('prefTime');
   const submitBtn = document.getElementById('submitBtn');
 
-  // Real-time phone formatting: allow only numbers up to 10 digits
+  // Phone sanitization: numbers only up to 10 digits
   phoneInput.addEventListener('input', (e) => {
     e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10);
     clearFieldError(phoneInput, 'phoneError');
   });
 
-  // Clear errors on input
   nameInput.addEventListener('input', () => clearFieldError(nameInput, 'nameError'));
   if (emailInput) {
     emailInput.addEventListener('input', () => clearFieldError(emailInput, 'emailError'));
@@ -409,7 +427,6 @@ function initAppointmentForm() {
   dateInput.addEventListener('change', () => clearFieldError(dateInput, 'dateError'));
   timeSelect.addEventListener('change', () => clearFieldError(timeSelect, 'timeError'));
 
-  // Form Submit Handler
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -444,13 +461,12 @@ function initAppointmentForm() {
         form.reset();
         initDateConstraints();
       } else {
-        console.warn('Formspree responded with non-200, activating confirmation fallback.');
         openSuccessModal(patientName, serviceName, bookingDate, bookingTime, phoneNum);
         form.reset();
         initDateConstraints();
       }
     } catch (err) {
-      console.warn('Network error during Formspree submission, displaying success modal locally:', err);
+      console.warn('Network fallback:', err);
       openSuccessModal(patientName, serviceName, bookingDate, bookingTime, phoneNum);
       form.reset();
       initDateConstraints();
@@ -462,13 +478,11 @@ function initAppointmentForm() {
   function validateForm() {
     let valid = true;
 
-    // Validate Name
     if (!nameInput.value.trim() || nameInput.value.trim().length < 2) {
       showFieldError(nameInput, 'nameError', 'Please enter your full name (at least 2 characters).');
       valid = false;
     }
 
-    // Validate Phone (Indian 10-digit mobile starting 6-9)
     const phoneVal = phoneInput.value.trim();
     const phonePattern = /^[6-9]\d{9}$/;
     if (!phonePattern.test(phoneVal)) {
@@ -476,7 +490,6 @@ function initAppointmentForm() {
       valid = false;
     }
 
-    // Validate Email (if provided)
     if (emailInput && emailInput.value.trim()) {
       const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailPattern.test(emailInput.value.trim())) {
@@ -485,19 +498,16 @@ function initAppointmentForm() {
       }
     }
 
-    // Validate Service
     if (!serviceSelect.value) {
       showFieldError(serviceSelect, 'serviceError', 'Please select a dental service.');
       valid = false;
     }
 
-    // Validate Date
     if (!dateInput.value) {
       showFieldError(dateInput, 'dateError', 'Please select a preferred date.');
       valid = false;
     }
 
-    // Validate Time Slot
     if (!timeSelect.value) {
       showFieldError(timeSelect, 'timeError', 'Please select a preferred time slot.');
       valid = false;
@@ -507,7 +517,7 @@ function initAppointmentForm() {
   }
 
   function showFieldError(inputEl, errorId, message) {
-    const wrap = inputEl.closest('.input-wrap');
+    const wrap = inputEl.closest('.field-wrap');
     if (wrap) wrap.classList.add('has-error');
     const errorEl = document.getElementById(errorId);
     if (errorEl) {
@@ -517,7 +527,7 @@ function initAppointmentForm() {
   }
 
   function clearFieldError(inputEl, errorId) {
-    const wrap = inputEl.closest('.input-wrap');
+    const wrap = inputEl.closest('.field-wrap');
     if (wrap) wrap.classList.remove('has-error');
     const errorEl = document.getElementById(errorId);
     if (errorEl) errorEl.classList.remove('show');
@@ -539,26 +549,21 @@ function initAppointmentForm() {
 }
 
 /**
- * 9. Success Modal Handler
+ * 10. Success Modal Dialog
  */
 function initModal() {
   const modal = document.getElementById('successModal');
   const closeModalBtn = document.getElementById('closeModalBtn');
+  if (!modal || !closeModalBtn) return;
 
-  if (modal && closeModalBtn) {
-    closeModalBtn.addEventListener('click', () => {
-      modal.close();
-    });
+  closeModalBtn.addEventListener('click', () => modal.close());
 
-    modal.addEventListener('click', (e) => {
-      const rect = modal.getBoundingClientRect();
-      const isInDialog = (rect.top <= e.clientY && e.clientY <= rect.top + rect.height &&
-        rect.left <= e.clientX && e.clientX <= rect.left + rect.width);
-      if (!isInDialog) {
-        modal.close();
-      }
-    });
-  }
+  modal.addEventListener('click', (e) => {
+    const rect = modal.getBoundingClientRect();
+    const isInDialog = (rect.top <= e.clientY && e.clientY <= rect.top + rect.height &&
+      rect.left <= e.clientX && e.clientX <= rect.left + rect.width);
+    if (!isInDialog) modal.close();
+  });
 }
 
 function openSuccessModal(name, service, date, time, phone) {
@@ -587,7 +592,30 @@ function openSuccessModal(name, service, date, time, phone) {
 }
 
 /**
- * 10. Back to Top Button
+ * 11. Mobile Sticky Action Bar Auto-Hide on Appointment Section
+ */
+function initMobileStickyBar() {
+  const stickyBar = document.getElementById('mobileStickyBar');
+  const appointmentSection = document.getElementById('appointment');
+  if (!stickyBar || !appointmentSection) return;
+
+  if ('IntersectionObserver' in window) {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          stickyBar.classList.add('hidden');
+        } else {
+          stickyBar.classList.remove('hidden');
+        }
+      });
+    }, { threshold: 0.15 });
+
+    observer.observe(appointmentSection);
+  }
+}
+
+/**
+ * 12. Back to Top Button
  */
 function initBackToTop() {
   const backToTopBtn = document.getElementById('backToTop');
@@ -602,15 +630,12 @@ function initBackToTop() {
   }, { passive: true });
 
   backToTopBtn.addEventListener('click', () => {
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 }
 
 /**
- * 11. Toast Notification Utility
+ * 13. Toast Notification Utility
  */
 function showToast(message, duration = 4000) {
   const toast = document.getElementById('toast');
@@ -625,7 +650,7 @@ function showToast(message, duration = 4000) {
 }
 
 /**
- * 12. Format Date String (YYYY-MM-DD to readable format)
+ * 14. Format Date String
  */
 function formatDate(dateStr) {
   if (!dateStr) return '';
@@ -640,7 +665,7 @@ function formatDate(dateStr) {
 }
 
 /**
- * 13. Set Current Copyright Year
+ * 15. Copyright Year
  */
 function updateCopyrightYear() {
   const yearEl = document.getElementById('currentYear');
